@@ -1,4 +1,5 @@
 """Unit tests for individual device controllers."""
+import tests.ha_mock  # noqa: F401
 import unittest
 from datetime import datetime, timedelta, timezone
 
