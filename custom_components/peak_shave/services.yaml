@@ -1,0 +1,7 @@
+restore_all:
+  name: Restore All Devices
+  description: Immediately restores all currently shed or throttled devices back to their normal operational states.
+
+recalculate:
+  name: Recalculate Now
+  description: Forces an immediate evaluation of grid load, trajectory forecasting, and load shedding constraints.

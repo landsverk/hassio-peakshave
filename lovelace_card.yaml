@@ -1,0 +1,69 @@
+# Lovelace Dashboard Card Configuration for Peak Shaving (Nettleie)
+# Add this as a "Manual Card" in any Lovelace Dashboard.
+type: vertical-stack
+title: ⚡ Toppbelastningskontroll (Lede Nettleie)
+cards:
+  # Main Status and Controls
+  - type: entities
+    show_header_toggle: false
+    entities:
+      - entity: switch.peak_shaving_nettleie_automation_enabled
+        name: Aktiv toppbelastningskontroll
+        icon: mdi:power-cycle
+      - entity: select.peak_shaving_nettleie_tariff_tier
+        name: Gjeldende kapasitetstrinn (Lede)
+        icon: mdi:chart-bell-curve-cumulative
+      - entity: sensor.peak_shaving_nettleie_status
+        name: Systemstatus
+      - entity: sensor.peak_shaving_nettleie_active_shed_devices
+        name: Utkoblede/begrensede enheter
+        icon: mdi:power-plug-off
+
+  # Power & Forecasting Gauges
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.peak_shaving_nettleie_grid_power
+        name: Nåværende nettlast
+        min: 0
+        max: 12
+        needle: true
+        severity:
+          green: 0
+          yellow: 4.0
+          red: 4.7
+        unit: kW
+      - type: gauge
+        entity: sensor.peak_shaving_nettleie_projected_hour_average
+        name: Prognose klokketime
+        min: 0
+        max: 12
+        needle: true
+        severity:
+          green: 0
+          yellow: 4.0
+          red: 4.7
+        unit: kW
+
+  # Hourly Budget and Power Limits
+  - type: glance
+    columns: 4
+    entities:
+      - entity: sensor.peak_shaving_nettleie_effective_limit
+        name: Effektiv grense
+      - entity: sensor.peak_shaving_nettleie_hour_energy_consumed
+        name: Forbruk denne timen
+      - entity: sensor.peak_shaving_nettleie_hour_budget_remaining
+        name: Resterende kvote
+      - entity: sensor.peak_shaving_nettleie_max_allowable_power
+        name: Tillatt rest-effekt
+
+  # Live Sliders for Fine-Tuning
+  - type: entities
+    title: ⚙️ Hurtigjustering
+    show_header_toggle: false
+    entities:
+      - entity: number.peak_shaving_nettleie_target_limit
+        name: Målgrense for trinn (kW)
+      - entity: number.peak_shaving_nettleie_safety_margin
+        name: Sikkerhetsbuffer (kW)

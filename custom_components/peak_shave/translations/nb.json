@@ -1,0 +1,102 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Toppbelastningskontroll (Nettleie / Kapasitetsledd)",
+        "description": "Konfigurer nettmåling og kapasitetstrinn (f.eks. Lede). All konfigurasjon gjøres i GUI uten YAML.",
+        "data": {
+          "grid_power_sensor": "Hovedstrømsensor / AMS (W eller kW)",
+          "grid_energy_sensor": "Timesforbruksensor (kWh, valgfri)",
+          "tariff_preset": "Kapasitetstrinn (Lede)",
+          "target_limit": "Maksimal effektgrense (kW)",
+          "safety_margin": "Sikkerhetsmargin (kW buffer)"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Det støttes kun én aktiv instans av Peak Shaving."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Administrer enheter for toppbelastningskontroll",
+        "menu_options": {
+          "menu_add_ac": "Legg til Varmepumpe / AC (Klima)",
+          "menu_add_ev": "Legg til Elbillader (Easee/Zaptec)",
+          "menu_add_switch": "Legg til Smartplugg / Bryter (Bereder)",
+          "menu_remove_device": "Fjern en konfigurert enhet",
+          "menu_general": "Tariff og avanserte innstillinger"
+        }
+      },
+      "menu_add_ac": {
+        "title": "Legg til Varmepumpe / AC",
+        "description": "Konfigurer varmepumpe med frost- og komfortgrenser samt prioritering.",
+        "data": {
+          "climate_entity": "Klima-entitet (climate.*)",
+          "name": "Valgfritt visningsnavn",
+          "power_sensor": "Effektsensor (W/kW, valgfri)",
+          "estimated_power": "Beregnet effektforbruk (kW)",
+          "priority": "Prioritet (1 = kuttes først, 10 = beholdes lengst)",
+          "climate_action": "Kutte-handling",
+          "setback_delta": "Temperatursenkning ved utkobling (°C)",
+          "min_temperature": "Minimum innetemperatur (°C, frostbeskyttelse)",
+          "max_temperature": "Maksimum innetemperatur (°C, ved kjøling)",
+          "cooldown_seconds": "Minimum hviletid for kompressor (sekunder)"
+        }
+      },
+      "menu_add_ev": {
+        "title": "Legg til Elbillader",
+        "description": "Konfigurer elbillader med trinnvis strømbegrensning (A) og batteribeskyttelse.",
+        "data": {
+          "ev_current_entity": "Ladestrøm-entitet (number.* i Ampere)",
+          "name": "Valgfritt visningsnavn",
+          "ev_switch_entity": "Pause/Start bryter (switch.*, valgfri)",
+          "ev_soc_sensor": "Batteriprosent-sensor (sensor.* i %, valgfri)",
+          "power_sensor": "Effektsensor (W/kW, valgfri)",
+          "priority": "Prioritet (1 = kuttes først, 10 = beholdes lengst)",
+          "min_soc": "Minimum batterireserve (% - under dette kuttes aldri)",
+          "min_current": "Laveste tillatte ladestrøm (A, standard 6A)",
+          "max_current": "Normal maksimal ladestrøm (A, standard 16A)",
+          "phases": "Nett-tilkobling (1-fase eller 3-fase)",
+          "cooldown_seconds": "Intervall mellom justeringer (sekunder)"
+        }
+      },
+      "menu_add_switch": {
+        "title": "Legg til Smartplugg / Bryter",
+        "description": "Konfigurer varmtvannsbereder, gulvvarme eller tung last.",
+        "data": {
+          "switch_entity": "Bryter-entitet (switch.*)",
+          "name": "Valgfritt visningsnavn",
+          "power_sensor": "Effektsensor (W/kW, valgfri)",
+          "estimated_power": "Beregnet effektforbruk (kW)",
+          "priority": "Prioritet (1 = kuttes først, 10 = beholdes lengst)",
+          "cooldown_seconds": "Hviletid mellom av/på (sekunder)"
+        }
+      },
+      "menu_remove_device": {
+        "title": "Fjern enhet",
+        "description": "Velg enhet som skal fjernes fra styringen.",
+        "data": {
+          "device_to_remove": "Velg enhet som skal slettes"
+        }
+      },
+      "menu_general": {
+        "title": "Tariff og avanserte innstillinger",
+        "description": "Juster effektrinn, marginer og filtre.",
+        "data": {
+          "grid_power_sensor": "Hovedstrømsensor (W eller kW)",
+          "grid_energy_sensor": "Timesforbruksensor (kWh, valgfri)",
+          "tariff_preset": "Tarifftrinn",
+          "target_limit": "Effektgrense (kW)",
+          "safety_margin": "Sikkerhetsmargin (kW buffer)",
+          "persistence_seconds": "Spike-filter / forsinkelse (sekunder)",
+          "hysteresis_power": "Innslagshysterese for gjenoppretting (kW)"
+        }
+      }
+    },
+    "abort": {
+      "no_devices_configured": "Ingen enheter er lagt til ennå."
+    }
+  }
+}

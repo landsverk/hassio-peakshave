@@ -1,0 +1,102 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Peak Shaving (Norwegian Capacity Tariff)",
+        "description": "Configure grid monitoring and target tariff tier (e.g., Lede). No YAML required.",
+        "data": {
+          "grid_power_sensor": "Main Grid Power Sensor (W or kW)",
+          "grid_energy_sensor": "Hourly Energy Sensor (kWh, optional)",
+          "tariff_preset": "Grid Tariff Preset (Lede)",
+          "target_limit": "Target Power Limit (kW)",
+          "safety_margin": "Safety Margin (kW buffer)"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one Peak Shaving instance is supported."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Peak Shaving Device Management",
+        "menu_options": {
+          "menu_add_ac": "Add Heat Pump / AC (Climate)",
+          "menu_add_ev": "Add EV Charger",
+          "menu_add_switch": "Add Smart Plug / Switch",
+          "menu_remove_device": "Remove a Device",
+          "menu_general": "Tariff & Optimization Tuning"
+        }
+      },
+      "menu_add_ac": {
+        "title": "Add Climate / AC Device",
+        "description": "Configure heat pump or AC unit with frost/comfort limits and priority.",
+        "data": {
+          "climate_entity": "Climate Entity",
+          "name": "Custom Name (Optional)",
+          "power_sensor": "Power Sensor (W/kW, Optional)",
+          "estimated_power": "Estimated Active Power (kW)",
+          "priority": "Priority (1 = shed first, 10 = keep longest)",
+          "climate_action": "Shedding Action",
+          "setback_delta": "Temperature Setback Amount (°C)",
+          "min_temperature": "Minimum Temperature Floor (°C, heating)",
+          "max_temperature": "Maximum Temperature Ceiling (°C, cooling)",
+          "cooldown_seconds": "Minimum Cycle Cooldown (seconds)"
+        }
+      },
+      "menu_add_ev": {
+        "title": "Add EV Charger",
+        "description": "Configure EV charger with dynamic current modulation and minimum battery reserve protection.",
+        "data": {
+          "ev_current_entity": "Charging Current Entity (number)",
+          "name": "Custom Name (Optional)",
+          "ev_switch_entity": "Pause/Resume Switch (Optional)",
+          "ev_soc_sensor": "Battery State of Charge Sensor (%, Optional)",
+          "power_sensor": "Power Sensor (W/kW, Optional)",
+          "priority": "Priority (1 = shed first, 10 = keep longest)",
+          "min_soc": "Minimum Battery Reserve (% - below this, never shed)",
+          "min_current": "Minimum Allowed Charging Current (A)",
+          "max_current": "Maximum Normal Charging Current (A)",
+          "phases": "Grid Connection Phases",
+          "cooldown_seconds": "Current Adjustment Interval (seconds)"
+        }
+      },
+      "menu_add_switch": {
+        "title": "Add Smart Plug / Switch",
+        "description": "Configure water heater, floor heating, or high-draw plug.",
+        "data": {
+          "switch_entity": "Switch Entity",
+          "name": "Custom Name (Optional)",
+          "power_sensor": "Power Sensor (W/kW, Optional)",
+          "estimated_power": "Estimated Power Rating (kW)",
+          "priority": "Priority (1 = shed first, 10 = keep longest)",
+          "cooldown_seconds": "Minimum Cooldown Between Toggles (seconds)"
+        }
+      },
+      "menu_remove_device": {
+        "title": "Remove Device",
+        "description": "Select a device to remove from peak shaving control.",
+        "data": {
+          "device_to_remove": "Select Device"
+        }
+      },
+      "menu_general": {
+        "title": "Tariff & Optimization Tuning",
+        "description": "Tune tariff tier limits, persistence filters, and hysteresis.",
+        "data": {
+          "grid_power_sensor": "Main Grid Power Sensor",
+          "grid_energy_sensor": "Hourly Energy Sensor (optional)",
+          "tariff_preset": "Tariff Preset",
+          "target_limit": "Target Power Limit (kW)",
+          "safety_margin": "Safety Margin (kW buffer)",
+          "persistence_seconds": "Spike Persistence Filter (seconds)",
+          "hysteresis_power": "Restoration Hysteresis (kW)"
+        }
+      }
+    },
+    "abort": {
+      "no_devices_configured": "No devices have been added yet."
+    }
+  }
+}
