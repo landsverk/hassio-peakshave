@@ -29,9 +29,15 @@ $$P_{\text{monthly\_max}} = \frac{P_{\text{day1\_max\_hour}} + P_{\text{day2\_ma
 
 ## 🚀 Key Features
 
-- **100% GUI-Driven (No YAML Required):**
-  - Interactive **Config Flow** and **Options Flow** in Home Assistant Settings.
-  - Add, configure, prioritize, and delete devices through native dialogs with entity search and filtering.
+- **Native Home Assistant Device Registry Integration (Like Zigbee & Z-Wave):**
+  - Controlled appliances (Boilers, Heat Pumps, EV Chargers) appear as **distinct Devices** in Home Assistant's native Device Table (`Settings` $\rightarrow$ `Devices & Services` $\rightarrow$ `Devices`).
+  - Each device page features live interactive controls: adjust **Priority**, **Min Temperature Floors**, or **Min SoC** directly from sliders on the device card without opening configuration dialogs!
+- **1-Click In-Place Device Modification (No Delete-and-Re-Add):**
+  - Opening the configuration menu displays all existing devices in a clean list. Clicking any device opens its pre-filled settings form for instant tuning or one-click deletion.
+- **Dedicated Water Boiler / Heater Support (`WaterHeaterDevice`):**
+  - Built specifically for high-draw Norwegian domestic water tanks (typically 2–3 kW).
+  - Works with `switch.*` relays or native `water_heater.*` entities.
+  - **Legionella & Comfort Floor:** Configurable minimum water temperature floor (e.g., 50°C). Shedding is blocked if water drops to the floor, and an emergency restore triggers if tank temperature drops during a shed period.
 - **Norwegian Tariff Presets:**
   - One-click presets for Lede (0–5 kW, 5–10 kW, 10–15 kW, etc.) or custom limits.
   - Interactive dropdown directly on your Lovelace dashboard to change tiers on the fly (e.g., switch temporarily to 10 kW when guests arrive).

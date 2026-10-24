@@ -20,16 +20,57 @@
   "options": {
     "step": {
       "init": {
-        "title": "Administrer enheter for toppbelastningskontroll",
-        "menu_options": {
-          "menu_add_ac": "Legg til Varmepumpe / AC (Klima)",
-          "menu_add_ev": "Legg til Elbillader (Easee/Zaptec)",
-          "menu_add_switch": "Legg til Smartplugg / Bryter (Bereder)",
-          "menu_remove_device": "Fjern en konfigurert enhet",
-          "menu_general": "Tariff og avanserte innstillinger"
+        "title": "Enhetsadministrasjon for toppbelastningskontroll",
+        "description": "Velg en eksisterende enhet for å endre parametere eller slette den, eller velg en handling for å legge til en ny enhet ({count} konfigurert).",
+        "data": {
+          "action": "Velg enhet eller handling"
         }
       },
-      "menu_add_ac": {
+      "edit_device": {
+        "title": "Rediger enhet: {device_name}",
+        "description": "Endre parametere for denne enheten, eller kryss av for 'Slett denne enheten' for å fjerne den.",
+        "data": {
+          "name": "Visningsnavn",
+          "priority": "Prioritet (1 = kuttes først, 10 = beholdes lengst)",
+          "power_sensor": "Effektsensor (W/kW, valgfri)",
+          "estimated_power": "Beregnet effekt (kW)",
+          "cooldown_seconds": "Hviletid mellom koblinger (sekunder)",
+          "water_heater_entity": "Bereder- eller rele-entitet",
+          "water_temp_sensor": "Vanntemperatursensor (valgfri)",
+          "min_water_temp": "Minimum vanntemperatur (°C, bunngrense)",
+          "target_water_temp": "Mål-vanntemperatur (°C)",
+          "climate_entity": "Klima-entitet (climate.*)",
+          "climate_action": "Kutte-handling",
+          "setback_delta": "Temperatursenkning ved utkobling (°C)",
+          "min_temperature": "Minimum innetemperatur (°C, frostbeskyttelse)",
+          "max_temperature": "Maksimum innetemperatur (°C, ved kjøling)",
+          "ev_current_entity": "Ladestrøm-entitet (number.* i Ampere)",
+          "ev_switch_entity": "Pause/Start bryter (valgfri)",
+          "ev_soc_sensor": "Batteriprosent-sensor (valgfri)",
+          "min_soc": "Minimum batterireserve (%)",
+          "min_current": "Laveste tillatte ladestrøm (A)",
+          "max_current": "Maksimal ladestrøm (A)",
+          "phases": "Nett-tilkobling (1-fase eller 3-fase)",
+          "switch_entity": "Bryter-entitet (switch.*)",
+          "delete_device": "Slett denne enheten (Permanent fjerning)"
+        }
+      },
+      "add_water_heater": {
+        "title": "Legg til Varmtvannsbereder",
+        "description": "Konfigurer varmtvannstank med temperatursikring, prioritering og hviletid.",
+        "data": {
+          "water_heater_entity": "Bereder- eller bryter-entitet (switch.* eller water_heater.*)",
+          "name": "Visningsnavn",
+          "water_temp_sensor": "Vanntemperatursensor (sensor.* i °C, valgfri)",
+          "power_sensor": "Effektsensor (W/kW, valgfri)",
+          "priority": "Prioritet (1 = kuttes først, 10 = beholdes lengst)",
+          "min_water_temp": "Minimumstemperatur i bereder (°C - kuttes aldri under dette)",
+          "target_water_temp": "Normal driftstemperatur (°C)",
+          "estimated_power": "Beregnet effekt (kW, standard 2.0 kW)",
+          "cooldown_seconds": "Hviletid mellom av/på (sekunder)"
+        }
+      },
+      "add_ac": {
         "title": "Legg til Varmepumpe / AC",
         "description": "Konfigurer varmepumpe med frost- og komfortgrenser samt prioritering.",
         "data": {
@@ -45,7 +86,7 @@
           "cooldown_seconds": "Minimum hviletid for kompressor (sekunder)"
         }
       },
-      "menu_add_ev": {
+      "add_ev": {
         "title": "Legg til Elbillader",
         "description": "Konfigurer elbillader med trinnvis strømbegrensning (A) og batteribeskyttelse.",
         "data": {
@@ -62,9 +103,9 @@
           "cooldown_seconds": "Intervall mellom justeringer (sekunder)"
         }
       },
-      "menu_add_switch": {
+      "add_switch": {
         "title": "Legg til Smartplugg / Bryter",
-        "description": "Konfigurer varmtvannsbereder, gulvvarme eller tung last.",
+        "description": "Konfigurer panelovn, gulvvarme eller tung last.",
         "data": {
           "switch_entity": "Bryter-entitet (switch.*)",
           "name": "Valgfritt visningsnavn",
@@ -74,14 +115,7 @@
           "cooldown_seconds": "Hviletid mellom av/på (sekunder)"
         }
       },
-      "menu_remove_device": {
-        "title": "Fjern enhet",
-        "description": "Velg enhet som skal fjernes fra styringen.",
-        "data": {
-          "device_to_remove": "Velg enhet som skal slettes"
-        }
-      },
-      "menu_general": {
+      "general": {
         "title": "Tariff og avanserte innstillinger",
         "description": "Juster effektrinn, marginer og filtre.",
         "data": {
@@ -94,9 +128,6 @@
           "hysteresis_power": "Innslagshysterese for gjenoppretting (kW)"
         }
       }
-    },
-    "abort": {
-      "no_devices_configured": "Ingen enheter er lagt til ennå."
     }
   }
 }

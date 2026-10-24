@@ -39,7 +39,7 @@ class PeakShaveMasterSwitch(
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.entry.entry_id}_master_switch"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.entry.entry_id)},
+            identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_hub")},
             name=NAME,
             manufacturer="Home Assistant Peak Shaver",
             model="Norwegian Capacity Tariff Optimizer",

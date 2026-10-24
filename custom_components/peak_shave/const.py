@@ -55,15 +55,23 @@ CONF_VOLTAGE: Final = CONF_EV_VOLTAGE
 # Switch Device Configuration Keys
 CONF_SWITCH_ENTITY: Final = "switch_entity"
 
+# Water Heater / Boiler Device Configuration Keys
+CONF_WATER_HEATER_ENTITY: Final = "water_heater_entity"
+CONF_WATER_TEMP_SENSOR: Final = "water_temp_sensor"
+CONF_MIN_WATER_TEMP: Final = "min_water_temp"
+CONF_TARGET_WATER_TEMP: Final = "target_water_temp"
+
 # Device Types
 DEVICE_TYPE_CLIMATE: Final = "climate"
 DEVICE_TYPE_SWITCH: Final = "switch"
 DEVICE_TYPE_EV: Final = "ev"
+DEVICE_TYPE_WATER_HEATER: Final = "water_heater"
 
 DEVICE_TYPES: Final = [
     DEVICE_TYPE_CLIMATE,
     DEVICE_TYPE_SWITCH,
     DEVICE_TYPE_EV,
+    DEVICE_TYPE_WATER_HEATER,
 ]
 
 # Climate Action Types
@@ -100,8 +108,13 @@ DEFAULT_EV_PHASES: Final = 3
 DEFAULT_EV_VOLTAGE: Final = 230  # V
 DEFAULT_EV_COOLDOWN: Final = 60  # seconds
 
-DEFAULT_SWITCH_ESTIMATED_POWER: Final = 1.5  # kW (e.g. water heater)
+DEFAULT_SWITCH_ESTIMATED_POWER: Final = 1.5  # kW (e.g. general plug)
 DEFAULT_SWITCH_COOLDOWN: Final = 120  # 2 minutes
+
+DEFAULT_WATER_HEATER_MIN_TEMP: Final = 50.0  # °C (frost/legionella safe floor)
+DEFAULT_WATER_HEATER_TARGET_TEMP: Final = 65.0  # °C
+DEFAULT_WATER_HEATER_ESTIMATED_POWER: Final = 2.0  # kW (typical Norwegian 200L/300L boiler)
+DEFAULT_WATER_HEATER_COOLDOWN: Final = 180  # 3 minutes for relay contact protection
 
 # Tariff Presets (specifically targeting Lede and standard Norwegian capacity tariffs)
 TARIFF_PRESETS: Final = {

@@ -1,11 +1,11 @@
 {
   "domain": "peak_shave",
   "name": "Peak Shaving (Nettleie)",
-  "codeowners": ["@daniel"],
+  "codeowners": ["@landsverk"],
   "config_flow": true,
-  "documentation": "https://github.com/daniel/hassio-peakshave",
+  "documentation": "https://github.com/landsverk/hassio-peakshave",
   "integration_type": "hub",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/daniel/hassio-peakshave/issues",
+  "issue_tracker": "https://github.com/landsverk/hassio-peakshave/issues",
   "version": "1.0.0"
 }

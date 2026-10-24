@@ -21,16 +21,57 @@
     "step": {
       "init": {
         "title": "Peak Shaving Device Management",
-        "menu_options": {
-          "menu_add_ac": "Add Heat Pump / AC (Climate)",
-          "menu_add_ev": "Add EV Charger",
-          "menu_add_switch": "Add Smart Plug / Switch",
-          "menu_remove_device": "Remove a Device",
-          "menu_general": "Tariff & Optimization Tuning"
+        "description": "Select an existing device to modify/delete, or choose an action to add a new device ({count} configured).",
+        "data": {
+          "action": "Select Device or Action"
         }
       },
-      "menu_add_ac": {
-        "title": "Add Climate / AC Device",
+      "edit_device": {
+        "title": "Edit Device: {device_name}",
+        "description": "Modify parameters for this device or check 'Delete this device' to remove it.",
+        "data": {
+          "name": "Custom Name",
+          "priority": "Priority (1 = shed first, 10 = keep longest)",
+          "power_sensor": "Power Sensor (W/kW, Optional)",
+          "estimated_power": "Estimated Active Power (kW)",
+          "cooldown_seconds": "Minimum Cycle Cooldown (seconds)",
+          "water_heater_entity": "Water Heater / Relay Entity",
+          "water_temp_sensor": "Water Tank Temperature Sensor (Optional)",
+          "min_water_temp": "Minimum Water Temperature Floor (°C)",
+          "target_water_temp": "Target Water Temperature (°C)",
+          "climate_entity": "Climate Entity",
+          "climate_action": "Shedding Action",
+          "setback_delta": "Temperature Setback Amount (°C)",
+          "min_temperature": "Minimum Temperature Floor (°C, heating)",
+          "max_temperature": "Maximum Temperature Ceiling (°C, cooling)",
+          "ev_current_entity": "Charging Current Entity (number)",
+          "ev_switch_entity": "Pause/Resume Switch (Optional)",
+          "ev_soc_sensor": "Battery State of Charge Sensor (%, Optional)",
+          "min_soc": "Minimum Battery Reserve (%)",
+          "min_current": "Minimum Allowed Charging Current (A)",
+          "max_current": "Maximum Normal Charging Current (A)",
+          "phases": "Grid Connection Phases",
+          "switch_entity": "Switch Entity",
+          "delete_device": "Delete this device (Permanently remove)"
+        }
+      },
+      "add_water_heater": {
+        "title": "Add Water Boiler / Heater",
+        "description": "Configure domestic hot water boiler with temperature floor protection and priority.",
+        "data": {
+          "water_heater_entity": "Water Heater or Switch Entity (switch.* or water_heater.*)",
+          "name": "Custom Name",
+          "water_temp_sensor": "Water Temperature Sensor (sensor.* in °C, optional)",
+          "power_sensor": "Power Sensor (W/kW, optional)",
+          "priority": "Priority (1 = shed first, 10 = keep longest)",
+          "min_water_temp": "Minimum Safe Temperature Floor (°C - never shed below this)",
+          "target_water_temp": "Normal Target Water Temperature (°C)",
+          "estimated_power": "Estimated Power Rating (kW, default 2.0 kW)",
+          "cooldown_seconds": "Minimum Cooldown Between Toggles (seconds)"
+        }
+      },
+      "add_ac": {
+        "title": "Add Climate / Heat Pump",
         "description": "Configure heat pump or AC unit with frost/comfort limits and priority.",
         "data": {
           "climate_entity": "Climate Entity",
@@ -45,7 +86,7 @@
           "cooldown_seconds": "Minimum Cycle Cooldown (seconds)"
         }
       },
-      "menu_add_ev": {
+      "add_ev": {
         "title": "Add EV Charger",
         "description": "Configure EV charger with dynamic current modulation and minimum battery reserve protection.",
         "data": {
@@ -62,9 +103,9 @@
           "cooldown_seconds": "Current Adjustment Interval (seconds)"
         }
       },
-      "menu_add_switch": {
+      "add_switch": {
         "title": "Add Smart Plug / Switch",
-        "description": "Configure water heater, floor heating, or high-draw plug.",
+        "description": "Configure space heater, floor heating, or high-draw plug.",
         "data": {
           "switch_entity": "Switch Entity",
           "name": "Custom Name (Optional)",
@@ -74,14 +115,7 @@
           "cooldown_seconds": "Minimum Cooldown Between Toggles (seconds)"
         }
       },
-      "menu_remove_device": {
-        "title": "Remove Device",
-        "description": "Select a device to remove from peak shaving control.",
-        "data": {
-          "device_to_remove": "Select Device"
-        }
-      },
-      "menu_general": {
+      "general": {
         "title": "Tariff & Optimization Tuning",
         "description": "Tune tariff tier limits, persistence filters, and hysteresis.",
         "data": {
@@ -94,9 +128,6 @@
           "hysteresis_power": "Restoration Hysteresis (kW)"
         }
       }
-    },
-    "abort": {
-      "no_devices_configured": "No devices have been added yet."
     }
   }
 }

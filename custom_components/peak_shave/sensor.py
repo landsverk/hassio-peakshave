@@ -1,7 +1,8 @@
 """Sensors for Peak Shaving (Nettleie) integration."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Dict, List, Optional, Set
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -10,8 +11,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfEnergy, UnitOfPower
-from homeassistant.core import HomeAssistant
+from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTemperature
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -26,6 +27,15 @@ from .const import (
     STATUS_WARNING,
 )
 from .coordinator import PeakShaveCoordinator
+from .devices import (
+    BaseDevice,
+    ClimateDevice,
+    EVChargerDevice,
+    SwitchDevice,
+    WaterHeaterDevice,
+)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -36,7 +46,8 @@ async def async_setup_entry(
     """Set up Peak Shaving sensors from a config entry."""
     coordinator: PeakShaveCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities: List[SensorEntity] = [
+    # 1. Main Hub Sensors
+    hub_entities: List[SensorEntity] = [
         PeakShaveStatusSensor(coordinator),
         PeakShaveGridPowerSensor(coordinator),
         PeakShaveTargetLimitSensor(coordinator),
@@ -47,12 +58,36 @@ async def async_setup_entry(
         PeakShaveHeadroomSensor(coordinator),
         PeakShaveActiveShedDevicesSensor(coordinator),
     ]
+    async_add_entities(hub_entities)
 
-    async_add_entities(entities)
+    # 2. Per-Device Sensors (Registering each device as an HA Device in the registry)
+    known_devices: Set[str] = set()
+
+    @callback
+    def _add_device_entities() -> None:
+        new_entities: List[SensorEntity] = []
+        for dev in coordinator.engine.get_devices():
+            if dev.device_id not in known_devices:
+                known_devices.add(dev.device_id)
+                new_entities.append(PeakShaveDeviceStatusSensor(coordinator, dev))
+                if isinstance(dev, WaterHeaterDevice):
+                    new_entities.append(PeakShaveDeviceWaterTempSensor(coordinator, dev))
+                elif isinstance(dev, EVChargerDevice):
+                    new_entities.append(PeakShaveDeviceEVCurrentSensor(coordinator, dev))
+                    if dev.soc_sensor:
+                        new_entities.append(PeakShaveDeviceEVSocSensor(coordinator, dev))
+                elif isinstance(dev, ClimateDevice):
+                    new_entities.append(PeakShaveDeviceClimateTempSensor(coordinator, dev))
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _add_device_entities()
+    entry.async_on_unload(coordinator.async_add_listener(_add_device_entities))
 
 
-class PeakShaveBaseSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
-    """Base class for peak shaving sensors."""
+class PeakShaveHubSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
+    """Base class for peak shaving hub sensors."""
 
     _attr_has_entity_name = True
 
@@ -61,12 +96,12 @@ class PeakShaveBaseSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity)
         coordinator: PeakShaveCoordinator,
         description: SensorEntityDescription,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize the hub sensor."""
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.entry.entry_id}_{description.key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.entry.entry_id)},
+            identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_hub")},
             name=NAME,
             manufacturer="Home Assistant Peak Shaver",
             model="Norwegian Capacity Tariff Optimizer",
@@ -74,11 +109,10 @@ class PeakShaveBaseSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity)
         )
 
 
-class PeakShaveStatusSensor(PeakShaveBaseSensor):
+class PeakShaveStatusSensor(PeakShaveHubSensor):
     """Overall operating status of peak shaving."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
-        """Initialize the status sensor."""
         super().__init__(
             coordinator,
             SensorEntityDescription(
@@ -89,12 +123,10 @@ class PeakShaveStatusSensor(PeakShaveBaseSensor):
 
     @property
     def native_value(self) -> str:
-        """Return the current operating status."""
         return self.coordinator.data.status
 
     @property
     def icon(self) -> str:
-        """Dynamic icon depending on peak shaving status."""
         status = self.coordinator.data.status
         if status == STATUS_NORMAL:
             return "mdi:shield-check"
@@ -110,7 +142,6 @@ class PeakShaveStatusSensor(PeakShaveBaseSensor):
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return diagnostic metrics and device states."""
         m = self.coordinator.data
         return {
             "tier_name": m.current_tier_name,
@@ -128,7 +159,7 @@ class PeakShaveStatusSensor(PeakShaveBaseSensor):
         }
 
 
-class PeakShaveGridPowerSensor(PeakShaveBaseSensor):
+class PeakShaveGridPowerSensor(PeakShaveHubSensor):
     """Monitored total grid power."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -148,7 +179,7 @@ class PeakShaveGridPowerSensor(PeakShaveBaseSensor):
         return self.coordinator.data.grid_power_kw
 
 
-class PeakShaveTargetLimitSensor(PeakShaveBaseSensor):
+class PeakShaveTargetLimitSensor(PeakShaveHubSensor):
     """Effective power limit after subtracting safety margin."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -167,7 +198,7 @@ class PeakShaveTargetLimitSensor(PeakShaveBaseSensor):
         return self.coordinator.data.effective_limit_kw
 
 
-class PeakShaveHourEnergySensor(PeakShaveBaseSensor):
+class PeakShaveHourEnergySensor(PeakShaveHubSensor):
     """Accumulated energy consumed so far this clock hour."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -187,7 +218,7 @@ class PeakShaveHourEnergySensor(PeakShaveBaseSensor):
         return self.coordinator.data.hour_energy_consumed_kwh
 
 
-class PeakShaveRemainingEnergySensor(PeakShaveBaseSensor):
+class PeakShaveRemainingEnergySensor(PeakShaveHubSensor):
     """Remaining energy allowance before exceeding tariff limit this hour."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -206,7 +237,7 @@ class PeakShaveRemainingEnergySensor(PeakShaveBaseSensor):
         return self.coordinator.data.hour_energy_remaining_kwh
 
 
-class PeakShaveProjectedHourPeakSensor(PeakShaveBaseSensor):
+class PeakShaveProjectedHourPeakSensor(PeakShaveHubSensor):
     """Projected end-of-hour average power (kW) based on current trajectory."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -226,7 +257,7 @@ class PeakShaveProjectedHourPeakSensor(PeakShaveBaseSensor):
         return self.coordinator.data.projected_hour_peak_kw
 
 
-class PeakShaveMaxAllowablePowerSensor(PeakShaveBaseSensor):
+class PeakShaveMaxAllowablePowerSensor(PeakShaveHubSensor):
     """Maximum allowable power draw for the rest of this hour."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -246,7 +277,7 @@ class PeakShaveMaxAllowablePowerSensor(PeakShaveBaseSensor):
         return self.coordinator.data.max_allowable_power_kw
 
 
-class PeakShaveHeadroomSensor(PeakShaveBaseSensor):
+class PeakShaveHeadroomSensor(PeakShaveHubSensor):
     """Headroom between max allowable power and current power."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -266,7 +297,7 @@ class PeakShaveHeadroomSensor(PeakShaveBaseSensor):
         return self.coordinator.data.headroom_kw
 
 
-class PeakShaveActiveShedDevicesSensor(PeakShaveBaseSensor):
+class PeakShaveActiveShedDevicesSensor(PeakShaveHubSensor):
     """Count and list of devices currently shed or throttled."""
 
     def __init__(self, coordinator: PeakShaveCoordinator) -> None:
@@ -290,3 +321,173 @@ class PeakShaveActiveShedDevicesSensor(PeakShaveBaseSensor):
             "device_names": self.coordinator.data.active_shed_devices,
             "shed_devices_count": len(self.coordinator.data.active_shed_devices),
         }
+
+
+# =========================================================================
+# PER-DEVICE SENSORS (Appear directly under each device in the HA Devices list)
+# =========================================================================
+
+
+class PeakShaveDeviceStatusSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
+    """Operating status of an individual controllable device."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: PeakShaveCoordinator, device: BaseDevice) -> None:
+        super().__init__(coordinator)
+        self.device_id = device.device_id
+        self._attr_name = "Status"
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{device.device_id}_status"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_{device.device_id}")},
+            name=device.name,
+            manufacturer="Peak Shaver",
+            model=f"{device.device_type.capitalize()} Controller",
+            via_device=(DOMAIN, f"{coordinator.entry.entry_id}_hub"),
+        )
+
+    def _get_device(self) -> Optional[BaseDevice]:
+        for d in self.coordinator.engine.get_devices():
+            if d.device_id == self.device_id:
+                return d
+        return None
+
+    @property
+    def native_value(self) -> str:
+        d = self._get_device()
+        if not d:
+            return "Unknown"
+        if not self.coordinator.engine.enabled:
+            return "Disabled"
+        if d.is_shed:
+            return f"Shed ({d.last_action_description})"
+        return "Normal"
+
+    @property
+    def icon(self) -> str:
+        d = self._get_device()
+        if d and d.is_shed:
+            return "mdi:power-plug-off"
+        return "mdi:power-plug"
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        d = self._get_device()
+        if not d:
+            return {}
+        return d.to_dict()
+
+
+class PeakShaveDeviceWaterTempSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
+    """Water temperature sensor for domestic water boilers."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: PeakShaveCoordinator, device: WaterHeaterDevice) -> None:
+        super().__init__(coordinator)
+        self.device_id = device.device_id
+        self._attr_name = "Water Temperature"
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{device.device_id}_water_temp"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_{device.device_id}")},
+            name=device.name,
+            manufacturer="Peak Shaver",
+            model="Water_heater Controller",
+            via_device=(DOMAIN, f"{coordinator.entry.entry_id}_hub"),
+        )
+
+    @property
+    def native_value(self) -> Optional[float]:
+        for d in self.coordinator.engine.get_devices():
+            if d.device_id == self.device_id and isinstance(d, WaterHeaterDevice):
+                return d.current_water_temp
+        return None
+
+
+class PeakShaveDeviceClimateTempSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
+    """Room temperature sensor for AC / heat pumps."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: PeakShaveCoordinator, device: ClimateDevice) -> None:
+        super().__init__(coordinator)
+        self.device_id = device.device_id
+        self._attr_name = "Room Temperature"
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{device.device_id}_room_temp"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_{device.device_id}")},
+            name=device.name,
+            manufacturer="Peak Shaver",
+            model="Climate Controller",
+            via_device=(DOMAIN, f"{coordinator.entry.entry_id}_hub"),
+        )
+
+    @property
+    def native_value(self) -> Optional[float]:
+        for d in self.coordinator.engine.get_devices():
+            if d.device_id == self.device_id and isinstance(d, ClimateDevice):
+                return d.current_temp
+        return None
+
+
+class PeakShaveDeviceEVCurrentSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
+    """Charging current sensor for EV chargers."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Charging Current"
+    _attr_native_unit_of_measurement = "A"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: PeakShaveCoordinator, device: EVChargerDevice) -> None:
+        super().__init__(coordinator)
+        self.device_id = device.device_id
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{device.device_id}_current_amps"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_{device.device_id}")},
+            name=device.name,
+            manufacturer="Peak Shaver",
+            model="Ev Controller",
+            via_device=(DOMAIN, f"{coordinator.entry.entry_id}_hub"),
+        )
+
+    @property
+    def native_value(self) -> Optional[float]:
+        for d in self.coordinator.engine.get_devices():
+            if d.device_id == self.device_id and isinstance(d, EVChargerDevice):
+                return d.current_amps
+        return None
+
+
+class PeakShaveDeviceEVSocSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
+    """Battery state of charge sensor for EV chargers."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_name = "Battery State of Charge"
+    _attr_native_unit_of_measurement = "%"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: PeakShaveCoordinator, device: EVChargerDevice) -> None:
+        super().__init__(coordinator)
+        self.device_id = device.device_id
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{device.device_id}_battery_soc"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_{device.device_id}")},
+            name=device.name,
+            manufacturer="Peak Shaver",
+            model="Ev Controller",
+            via_device=(DOMAIN, f"{coordinator.entry.entry_id}_hub"),
+        )
+
+    @property
+    def native_value(self) -> Optional[float]:
+        for d in self.coordinator.engine.get_devices():
+            if d.device_id == self.device_id and isinstance(d, EVChargerDevice):
+                return d.battery_soc
+        return None

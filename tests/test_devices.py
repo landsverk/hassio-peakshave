@@ -22,18 +22,24 @@ from custom_components.peak_shave.const import (
     CONF_MAX_TEMPERATURE,
     CONF_MIN_COOLDOWN,
     CONF_MIN_TEMPERATURE,
+    CONF_MIN_WATER_TEMP,
     CONF_POWER_SENSOR,
     CONF_PRIORITY,
     CONF_SETBACK_DELTA,
     CONF_SWITCH_ENTITY,
+    CONF_TARGET_WATER_TEMP,
+    CONF_WATER_HEATER_ENTITY,
+    CONF_WATER_TEMP_SENSOR,
     DEVICE_TYPE_CLIMATE,
     DEVICE_TYPE_EV,
     DEVICE_TYPE_SWITCH,
+    DEVICE_TYPE_WATER_HEATER,
 )
 from custom_components.peak_shave.devices import (
     ClimateDevice,
     EVChargerDevice,
     SwitchDevice,
+    WaterHeaterDevice,
     create_device_from_config,
 )
 
@@ -217,6 +223,56 @@ class TestDevices(unittest.TestCase):
         self.assertEqual(ev.shed_stage, 0)
         self.assertFalse(ev.is_shed)
 
+    def test_water_heater_device_lifecycle(self):
+        """Test domestic water boiler shedding, min temp protection, and emergency restore."""
+        boiler = WaterHeaterDevice({
+            CONF_DEVICE_ID: "boiler_1",
+            CONF_DEVICE_NAME: "OSO Hotwater Boiler",
+            CONF_DEVICE_TYPE: DEVICE_TYPE_WATER_HEATER,
+            CONF_WATER_HEATER_ENTITY: "switch.boiler_relay",
+            CONF_WATER_TEMP_SENSOR: "sensor.boiler_tank_temperature",
+            CONF_MIN_WATER_TEMP: 50.0,
+            CONF_TARGET_WATER_TEMP: 65.0,
+            CONF_ESTIMATED_POWER: 2.0,
+            CONF_MIN_COOLDOWN: 180,
+            CONF_PRIORITY: 1,
+        })
+        boiler.update_water_heater_state(is_heating=True, current_water_temp=62.0)
+        boiler.update_power_reading(2.05)
+
+        # 1. Normal state (62°C > 50°C): safe to shed
+        self.assertTrue(boiler.can_shed(self.now))
+        self.assertAlmostEqual(boiler.estimated_shed_power_reduction(), 2.05, places=2)
+
+        # Shed boiler
+        actions = boiler.plan_shed(self.now)
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0].domain, "switch")
+        self.assertEqual(actions[0].service, "turn_off")
+        self.assertTrue(boiler.is_shed)
+        self.assertFalse(boiler.is_heating)
+
+        # 2. While shed and in cooldown (30s after shed), water is still 58°C: cannot restore yet
+        t_soon = self.now + timedelta(seconds=30)
+        self.assertFalse(boiler.can_restore(t_soon))
+
+        # 3. Emergency condition: water temp plunges to 48.0°C (< 50.0°C floor)
+        # Even though cooldown is active, can_restore overrides cooldown to protect hot water!
+        boiler.update_water_heater_state(is_heating=False, current_water_temp=48.0)
+        self.assertTrue(boiler.can_restore(t_soon))
+
+        # Restore boiler
+        restore_actions = boiler.plan_restore(t_soon)
+        self.assertEqual(len(restore_actions), 1)
+        self.assertEqual(restore_actions[0].service, "turn_on")
+        self.assertFalse(boiler.is_shed)
+        self.assertTrue(boiler.is_heating)
+
+        # 4. If boiler is already cold (45°C <= 50°C), shedding is blocked completely
+        boiler.update_water_heater_state(is_heating=True, current_water_temp=45.0)
+        t_later = self.now + timedelta(seconds=600)
+        self.assertFalse(boiler.can_shed(t_later))
+
     def test_factory_creation(self):
         """Test factory instantiate correct classes."""
         c = create_device_from_config({
@@ -239,6 +295,13 @@ class TestDevices(unittest.TestCase):
             CONF_EV_CURRENT_ENTITY: "number.test",
         })
         self.assertIsInstance(e, EVChargerDevice)
+
+        w = create_device_from_config({
+            CONF_DEVICE_ID: "wb1",
+            CONF_DEVICE_TYPE: DEVICE_TYPE_WATER_HEATER,
+            CONF_WATER_HEATER_ENTITY: "switch.boiler",
+        })
+        self.assertIsInstance(w, WaterHeaterDevice)
 
 
 if __name__ == "__main__":

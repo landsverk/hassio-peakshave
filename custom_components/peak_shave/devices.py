@@ -26,10 +26,14 @@ from .const import (
     CONF_MAX_TEMPERATURE,
     CONF_MIN_COOLDOWN,
     CONF_MIN_TEMPERATURE,
+    CONF_MIN_WATER_TEMP,
     CONF_POWER_SENSOR,
     CONF_PRIORITY,
     CONF_SETBACK_DELTA,
     CONF_SWITCH_ENTITY,
+    CONF_TARGET_WATER_TEMP,
+    CONF_WATER_HEATER_ENTITY,
+    CONF_WATER_TEMP_SENSOR,
     DEFAULT_CLIMATE_ACTION,
     DEFAULT_CLIMATE_COOLDOWN,
     DEFAULT_CLIMATE_MAX_TEMP,
@@ -43,9 +47,14 @@ from .const import (
     DEFAULT_EV_VOLTAGE,
     DEFAULT_SWITCH_COOLDOWN,
     DEFAULT_SWITCH_ESTIMATED_POWER,
+    DEFAULT_WATER_HEATER_COOLDOWN,
+    DEFAULT_WATER_HEATER_ESTIMATED_POWER,
+    DEFAULT_WATER_HEATER_MIN_TEMP,
+    DEFAULT_WATER_HEATER_TARGET_TEMP,
     DEVICE_TYPE_CLIMATE,
     DEVICE_TYPE_EV,
     DEVICE_TYPE_SWITCH,
+    DEVICE_TYPE_WATER_HEATER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -588,6 +597,172 @@ class SwitchDevice(BaseDevice):
         return self.estimated_power
 
 
+class WaterHeaterDevice(BaseDevice):
+    """Controller for domestic hot water boilers (varmtvannsbereder).
+
+    Protects hot water comfort and prevents legionella risk by enforcing a minimum
+    temperature floor (e.g. 50°C-55°C). Supports control via switch.* or water_heater.*.
+    """
+
+    def __init__(self, config: Dict[str, Any]) -> None:
+        super().__init__(config)
+        self.heater_entity: str = config.get(
+            CONF_WATER_HEATER_ENTITY, config.get(CONF_SWITCH_ENTITY, "")
+        )
+        self.temp_sensor: Optional[str] = config.get(CONF_WATER_TEMP_SENSOR)
+        self.min_water_temp: float = float(
+            config.get(CONF_MIN_WATER_TEMP, DEFAULT_WATER_HEATER_MIN_TEMP)
+        )
+        self.target_water_temp: float = float(
+            config.get(CONF_TARGET_WATER_TEMP, DEFAULT_WATER_HEATER_TARGET_TEMP)
+        )
+        self.estimated_power = float(
+            config.get(CONF_ESTIMATED_POWER, DEFAULT_WATER_HEATER_ESTIMATED_POWER)
+        )
+        self.cooldown_seconds = int(
+            config.get(CONF_MIN_COOLDOWN, DEFAULT_WATER_HEATER_COOLDOWN)
+        )
+
+        # Dynamic state
+        self.current_water_temp: Optional[float] = None
+        self.is_heating: bool = True
+        self.operation_mode: str = "on"
+
+    def update_water_heater_state(
+        self,
+        is_heating: bool,
+        current_water_temp: Optional[float] = None,
+        operation_mode: Optional[str] = None,
+    ) -> None:
+        """Update boiler readings from Home Assistant entities."""
+        self.is_heating = is_heating
+        if current_water_temp is not None:
+            self.current_water_temp = current_water_temp
+        if operation_mode is not None:
+            self.operation_mode = operation_mode
+
+    def can_shed(self, now: datetime) -> bool:
+        """Boiler can shed if heating, not already shed, not in cooldown, and above min temp."""
+        if self.is_shed:
+            return False
+        if not self.is_heating:
+            return False
+        if self.in_cooldown(now):
+            return False
+
+        # Comfort & Legionella safety check:
+        # If water temperature is already at or below the minimum threshold, DO NOT shed!
+        if self.current_water_temp is not None and self.current_water_temp <= self.min_water_temp:
+            _LOGGER.debug(
+                "Water heater %s at %.1f°C <= min %.1f°C. Skipping shed to protect hot water.",
+                self.name,
+                self.current_water_temp,
+                self.min_water_temp,
+            )
+            return False
+
+        return True
+
+    def plan_shed(self, now: datetime) -> list[ShedAction]:
+        """Shed boiler by turning off switch or setting water_heater to off/away."""
+        actions: list[ShedAction] = []
+        domain = self.heater_entity.split(".")[0]
+
+        if domain == "water_heater":
+            self.saved_state = {
+                "operation_mode": self.operation_mode,
+                "target_temp": self.target_water_temp,
+            }
+            actions.append(
+                ShedAction(
+                    domain="water_heater",
+                    service="set_operation_mode",
+                    target_entity=self.heater_entity,
+                    service_data={"operation_mode": "off"},
+                    description=f"Turned off water heater {self.name}",
+                )
+            )
+        else:
+            self.saved_state = {"was_heating": self.is_heating}
+            actions.append(
+                ShedAction(
+                    domain="switch",
+                    service="turn_off",
+                    target_entity=self.heater_entity,
+                    description=f"Turned off boiler relay {self.name}",
+                )
+            )
+
+        self.is_shed = True
+        self.shed_stage = 1
+        self.is_heating = False
+        self.last_action_description = "Turned off"
+        self.last_state_change = now
+        return actions
+
+    def can_restore(self, now: datetime) -> bool:
+        """Boiler can restore if shed. If water is critically cold, cooldown is overridden!"""
+        if not self.is_shed:
+            return False
+
+        # If water dropped below min threshold while shed, prioritize emergency restoration
+        if self.current_water_temp is not None and self.current_water_temp < self.min_water_temp:
+            _LOGGER.warning(
+                "Water heater %s temperature %.1f°C dropped below min %.1f°C! Overriding cooldown.",
+                self.name,
+                self.current_water_temp,
+                self.min_water_temp,
+            )
+            return True
+
+        return not self.in_cooldown(now)
+
+    def plan_restore(self, now: datetime) -> list[ShedAction]:
+        """Restore boiler back to heating."""
+        actions: list[ShedAction] = []
+        domain = self.heater_entity.split(".")[0]
+
+        if domain == "water_heater":
+            saved_mode = self.saved_state.get("operation_mode", "electric")
+            if saved_mode == "off":
+                saved_mode = "electric"
+            actions.append(
+                ShedAction(
+                    domain="water_heater",
+                    service="set_operation_mode",
+                    target_entity=self.heater_entity,
+                    service_data={"operation_mode": saved_mode},
+                    description=f"Restored water heater mode to {saved_mode}",
+                )
+            )
+        else:
+            actions.append(
+                ShedAction(
+                    domain="switch",
+                    service="turn_on",
+                    target_entity=self.heater_entity,
+                    description=f"Turned on boiler relay {self.name}",
+                )
+            )
+
+        self.is_shed = False
+        self.shed_stage = 0
+        self.is_heating = True
+        self.last_action_description = "Restored to heating"
+        self.last_state_change = now
+        return actions
+
+    def estimated_shed_power_reduction(self) -> float:
+        """Estimated power saved by turning off."""
+        if self.current_power_kw > 0.05:
+            return self.current_power_kw
+        return self.estimated_power
+
+    def estimated_restore_power_increase(self) -> float:
+        """Estimated power drawn when turned back on."""
+        return self.estimated_power
+
+
 def create_device_from_config(config: Dict[str, Any]) -> BaseDevice:
     """Factory function to instantiate the correct device controller."""
     device_type = config.get(CONF_DEVICE_TYPE)
@@ -597,5 +772,7 @@ def create_device_from_config(config: Dict[str, Any]) -> BaseDevice:
         return EVChargerDevice(config)
     elif device_type == DEVICE_TYPE_SWITCH:
         return SwitchDevice(config)
+    elif device_type == DEVICE_TYPE_WATER_HEATER:
+        return WaterHeaterDevice(config)
     else:
         raise ValueError(f"Unknown device type: {device_type}")

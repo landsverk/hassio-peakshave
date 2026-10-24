@@ -34,6 +34,7 @@ from .devices import (
     ClimateDevice,
     EVChargerDevice,
     SwitchDevice,
+    WaterHeaterDevice,
     create_device_from_config,
 )
 from .engine import EngineMetrics, PeakShavingEngine
@@ -198,6 +199,31 @@ class PeakShaveCoordinator(DataUpdateCoordinator[EngineMetrics]):
                 if sw_state:
                     device.update_switch_state(sw_state.state == "on")
 
+            elif isinstance(device, WaterHeaterDevice):
+                # Read boiler temperature from sensor or entity attribute
+                temp: Optional[float] = None
+                if device.temp_sensor:
+                    t_state = self.hass.states.get(device.temp_sensor)
+                    if t_state:
+                        temp = _parse_float(t_state.state)
+
+                heater_state = self.hass.states.get(device.heater_entity)
+                is_heating = True
+                op_mode: Optional[str] = None
+                if heater_state:
+                    if temp is None:
+                        temp = _parse_float(
+                            heater_state.attributes.get("current_temperature")
+                        )
+                    op_mode = heater_state.state
+                    domain = device.heater_entity.split(".")[0]
+                    if domain == "water_heater":
+                        is_heating = op_mode not in ("off", "eco", "away")
+                    else:
+                        is_heating = op_mode == "on"
+
+                device.update_water_heater_state(is_heating, temp, op_mode)
+
     async def _async_update_data(self) -> EngineMetrics:
         """Fetch latest state, run evaluation, and dispatch any control actions."""
         # 1. Read main grid power
@@ -313,3 +339,30 @@ class PeakShaveCoordinator(DataUpdateCoordinator[EngineMetrics]):
                 options[CONF_TARGET_LIMIT] = preset["limit"]
             self.hass.config_entries.async_update_entry(self.entry, options=options)
             await self.async_refresh()
+
+    async def async_update_device_setting(
+        self, device_id: str, setting_key: str, value: Any
+    ) -> None:
+        """Update a specific setting for a device directly."""
+        options = dict(self.entry.options or self.entry.data)
+        devices = list(options.get(CONF_DEVICES, []))
+        updated = False
+        for d in devices:
+            if d.get("id") == device_id:
+                d[setting_key] = value
+                updated = True
+                break
+        if updated:
+            options[CONF_DEVICES] = devices
+            self.hass.config_entries.async_update_entry(self.entry, options=options)
+            self.update_config()
+            await self.async_refresh()
+
+    async def async_remove_device_by_id(self, device_id: str) -> None:
+        """Remove a device by ID."""
+        options = dict(self.entry.options or self.entry.data)
+        devices = [d for d in options.get(CONF_DEVICES, []) if d.get("id") != device_id]
+        options[CONF_DEVICES] = devices
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
+        self.update_config()
+        await self.async_refresh()
