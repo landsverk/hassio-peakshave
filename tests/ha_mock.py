@@ -55,13 +55,31 @@ class MockSelectSelector:
         self.config = config or {}
 
 
+_MEMORY_STORAGE = {}
+
+
+class MockStore:
+    def __init__(self, hass, version, key):
+        self.key = key
+
+    async def async_load(self):
+        return _MEMORY_STORAGE.get(self.key)
+
+    async def async_save(self, data):
+        _MEMORY_STORAGE[self.key] = data
+
+
 selector_mock = MagicMock()
 selector_mock.SelectOptionDict = MockSelectOptionDict
 selector_mock.SelectSelectorConfig = MockSelectSelectorConfig
 selector_mock.SelectSelector = MockSelectSelector
 
+storage_mock = MagicMock()
+storage_mock.Store = MockStore
+
 helpers_mock = MagicMock()
 helpers_mock.selector = selector_mock
+helpers_mock.storage = storage_mock
 
 ha_mock = MagicMock()
 ha_mock.config_entries = config_entries_mock
@@ -71,6 +89,7 @@ sys.modules["homeassistant"] = ha_mock
 sys.modules["homeassistant.config_entries"] = config_entries_mock
 sys.modules["homeassistant.helpers"] = helpers_mock
 sys.modules["homeassistant.helpers.selector"] = selector_mock
+sys.modules["homeassistant.helpers.storage"] = storage_mock
 
 class MockSchema:
     def __init__(self, schema):

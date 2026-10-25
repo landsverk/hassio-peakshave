@@ -38,6 +38,7 @@ from .devices import (
     create_device_from_config,
 )
 from .engine import EngineMetrics, PeakShavingEngine
+from .storage import PeakShaveStorage
 
 _LOGGER = logging.getLogger(__name__)
 
