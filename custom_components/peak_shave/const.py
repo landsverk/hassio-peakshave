@@ -5,7 +5,7 @@ from typing import Final
 
 DOMAIN: Final = "peak_shave"
 NAME: Final = "Peak Shaving (Nettleie)"
-VERSION: Final = "1.0.0"
+VERSION: Final = "0.5.0"
 
 # Configuration Keys - General
 CONF_GRID_POWER_SENSOR: Final = "grid_power_sensor"

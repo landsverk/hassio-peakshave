@@ -103,7 +103,7 @@ class PeakShaveHubSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{coordinator.entry.entry_id}_hub")},
             name=NAME,
-            manufacturer="Home Assistant Peak Shaver",
+            manufacturer="Daniel Landsverk",
             model="Norwegian Capacity Tariff Optimizer",
             sw_version="1.0.0",
         )
