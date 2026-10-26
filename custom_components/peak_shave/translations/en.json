@@ -28,7 +28,7 @@
       },
       "edit_device": {
         "title": "Edit Device: {device_name}",
-        "description": "Modify parameters for this device or check 'Delete this device' to remove it.",
+        "description": "Modify parameters for this device.",
         "data": {
           "name": "Custom Name",
           "priority": "Priority (1 = shed first, 10 = keep longest)",
@@ -51,9 +51,16 @@
           "min_current": "Minimum Allowed Charging Current (A)",
           "max_current": "Maximum Normal Charging Current (A)",
           "phases": "Grid Connection Phases",
-          "switch_entity": "Switch Entity",
-          "delete_device": "Delete this device (Permanently remove)"
+          "switch_entity": "Switch Entity"
         }
+      },
+      "device_menu": {
+        "title": "Device: {device_name}",
+        "description": "What do you want to do with this device?"
+      },
+      "delete_device": {
+        "title": "Delete device: {device_name}",
+        "description": "Press Submit to permanently delete {device_name}."
       },
       "add_water_heater": {
         "title": "Add Water Boiler / Heater",

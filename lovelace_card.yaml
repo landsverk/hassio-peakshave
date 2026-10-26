@@ -67,3 +67,13 @@ cards:
         name: Målgrense for trinn (kW)
       - entity: number.peak_shaving_nettleie_safety_margin
         name: Sikkerhetsbuffer (kW)
+
+  # Device LEDs: green = ok, yellow = at risk of being shed, red = shed/throttled
+  - type: markdown
+    title: Enhetsstatus
+    content: >
+      {% set devs = state_attr('sensor.peak_shaving_nettleie_status', 'configured_devices') or [] %}
+      {% for d in devs | sort(attribute='priority') -%}
+      {{ {'green': '🟢', 'yellow': '🟡', 'red': '🔴'}[d.led] }} **{{ d.name }}** {% if d.last_action and d.is_shed %}– {{ d.last_action }}{% endif %}
+
+      {% endfor %}

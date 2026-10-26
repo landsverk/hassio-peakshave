@@ -206,7 +206,7 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
             if action:
                 if action.startswith("edit_"):
                     self._selected_device_id = action[5:]
-                    return await self.async_step_edit_device()
+                    return await self.async_step_device_menu()
                 elif action == "add_water_heater":
                     return await self.async_step_add_water_heater()
                 elif action == "add_ac":
@@ -241,7 +241,7 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
                 icon = "🔌"
                 extra = f"~{d.get(CONF_ESTIMATED_POWER, 1.5)} kW"
 
-            label = f"{icon} {name} (Prio {prio}, {extra}) — Endre / Slett"
+            label = f"{icon} {name} (Prio {prio}, {extra})"
             options.append(selector.SelectOptionDict(value=f"edit_{dev_id}", label=label))
 
         # Add device choices
@@ -293,6 +293,45 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
             description_placeholders={"count": str(len(devices))},
         )
 
+    async def async_step_device_menu(
+        self, user_input: Optional[Dict[str, Any]] = None
+    ) -> FlowResult:
+        """Choose between editing and deleting the selected device."""
+        dev = next(
+            (d for d in self._options.get(CONF_DEVICES, []) if d.get(CONF_DEVICE_ID) == self._selected_device_id),
+            None,
+        )
+        if dev is None:
+            return await self.async_step_init()
+        return self.async_show_menu(
+            step_id="device_menu",
+            menu_options={
+                "edit_device": "Endre innstillinger / Edit",
+                "delete_device": "Slett enhet / Delete",
+                "init": "Tilbake / Back",
+            },
+            description_placeholders={"device_name": dev.get(CONF_DEVICE_NAME, "")},
+        )
+
+    async def async_step_delete_device(
+        self, user_input: Optional[Dict[str, Any]] = None
+    ) -> FlowResult:
+        """Confirm and delete the selected device."""
+        devices = list(self._options.get(CONF_DEVICES, []))
+        dev = next((d for d in devices if d.get(CONF_DEVICE_ID) == self._selected_device_id), None)
+        if dev is None:
+            return await self.async_step_init()
+        if user_input is not None:
+            self._options[CONF_DEVICES] = [
+                d for d in devices if d.get(CONF_DEVICE_ID) != self._selected_device_id
+            ]
+            return self.async_create_entry(title="", data=self._options)
+        return self.async_show_form(
+            step_id="delete_device",
+            data_schema=vol.Schema({}),
+            description_placeholders={"device_name": dev.get(CONF_DEVICE_NAME, "")},
+        )
+
     async def async_step_edit_device(
         self, user_input: Optional[Dict[str, Any]] = None
     ) -> FlowResult:
@@ -307,13 +346,6 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
         dtype = dev.get(CONF_DEVICE_TYPE)
 
         if user_input is not None:
-            if user_input.get("delete_device"):
-                # Remove device
-                self._options[CONF_DEVICES] = [
-                    d for d in devices if d.get(CONF_DEVICE_ID) != self._selected_device_id
-                ]
-                return self.async_create_entry(title="", data=self._options)
-
             # Update existing device in place
             updated_device = dict(dev)
             updated_device[CONF_DEVICE_NAME] = user_input.get(CONF_DEVICE_NAME, dev.get(CONF_DEVICE_NAME))
@@ -363,7 +395,7 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
             schema_dict[vol.Required(CONF_WATER_HEATER_ENTITY, default=dev.get(CONF_WATER_HEATER_ENTITY, ""))]= selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["switch", "water_heater"])
             )
-            schema_dict[vol.Optional(CONF_WATER_TEMP_SENSOR, default=dev.get(CONF_WATER_TEMP_SENSOR))] = selector.EntitySelector(
+            schema_dict[vol.Optional(CONF_WATER_TEMP_SENSOR, description={"suggested_value": dev.get(CONF_WATER_TEMP_SENSOR)})] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
             schema_dict[vol.Required(CONF_MIN_WATER_TEMP, default=dev.get(CONF_MIN_WATER_TEMP, DEFAULT_WATER_HEATER_MIN_TEMP))] = selector.NumberSelector(
@@ -398,10 +430,10 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
             schema_dict[vol.Required(CONF_EV_CURRENT_ENTITY, default=dev.get(CONF_EV_CURRENT_ENTITY, ""))]= selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="number")
             )
-            schema_dict[vol.Optional(CONF_EV_SWITCH_ENTITY, default=dev.get(CONF_EV_SWITCH_ENTITY))] = selector.EntitySelector(
+            schema_dict[vol.Optional(CONF_EV_SWITCH_ENTITY, description={"suggested_value": dev.get(CONF_EV_SWITCH_ENTITY)})] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="switch")
             )
-            schema_dict[vol.Optional(CONF_EV_SOC_SENSOR, default=dev.get(CONF_EV_SOC_SENSOR))] = selector.EntitySelector(
+            schema_dict[vol.Optional(CONF_EV_SOC_SENSOR, description={"suggested_value": dev.get(CONF_EV_SOC_SENSOR)})] = selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             )
             schema_dict[vol.Required(CONF_EV_MIN_SOC, default=dev.get(CONF_EV_MIN_SOC, DEFAULT_EV_MIN_SOC))] = selector.NumberSelector(
@@ -427,7 +459,7 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
                 selector.EntitySelectorConfig(domain="switch")
             )
 
-        schema_dict[vol.Optional(CONF_POWER_SENSOR, default=dev.get(CONF_POWER_SENSOR))] = selector.EntitySelector(
+        schema_dict[vol.Optional(CONF_POWER_SENSOR, description={"suggested_value": dev.get(CONF_POWER_SENSOR)})] = selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor")
         )
         schema_dict[vol.Required(CONF_ESTIMATED_POWER, default=dev.get(CONF_ESTIMATED_POWER, 1.5))] = selector.NumberSelector(
@@ -436,7 +468,6 @@ class PeakShaveOptionsFlowHandler(config_entries.OptionsFlow):
         schema_dict[vol.Required(CONF_MIN_COOLDOWN, default=dev.get(CONF_MIN_COOLDOWN, 180))] = selector.NumberSelector(
             selector.NumberSelectorConfig(min=10, max=900, step=10, unit_of_measurement="sekunder", mode=selector.NumberSelectorMode.BOX)
         )
-        schema_dict[vol.Optional("delete_device", default=False)] = selector.BooleanSelector()
 
         return self.async_show_form(
             step_id="edit_device",

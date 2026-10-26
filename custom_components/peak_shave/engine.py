@@ -122,6 +122,21 @@ class PeakShavingEngine:
         """Return registered devices."""
         return list(self.devices)
 
+    def device_led(self, device: BaseDevice) -> str:
+        """red = shed/throttled, yellow = at risk of being shed, green = ok."""
+        if device.is_shed:
+            return "red"
+        if not self.enabled:
+            return "green"
+        if self.metrics.status in (STATUS_WARNING, STATUS_SHEDDING, STATUS_LIMIT_EXCEEDED):
+            now = self.metrics.timestamp or datetime.now(timezone.utc)
+            try:
+                if device.can_shed(now):
+                    return "yellow"
+            except TypeError:
+                pass
+        return "green"
+
     def _check_hour_rollover(self, now: datetime) -> bool:
         """Detect new clock hour boundary and reset hourly accumulators."""
         if self._last_hour is None:

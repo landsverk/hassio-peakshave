@@ -154,7 +154,8 @@ class PeakShaveStatusSensor(PeakShaveHubSensor):
             "minutes_remaining_this_hour": m.minutes_remaining,
             "active_shed_devices": m.active_shed_devices,
             "configured_devices": [
-                d.to_dict() for d in self.coordinator.engine.get_devices()
+                {**d.to_dict(), "led": self.coordinator.engine.device_led(d)}
+                for d in self.coordinator.engine.get_devices()
             ],
         }
 
@@ -375,7 +376,7 @@ class PeakShaveDeviceStatusSensor(CoordinatorEntity[PeakShaveCoordinator], Senso
         d = self._get_device()
         if not d:
             return {}
-        return d.to_dict()
+        return {**d.to_dict(), "led": self.coordinator.engine.device_led(d)}
 
 
 class PeakShaveDeviceWaterTempSensor(CoordinatorEntity[PeakShaveCoordinator], SensorEntity):

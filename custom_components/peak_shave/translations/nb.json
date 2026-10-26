@@ -28,7 +28,7 @@
       },
       "edit_device": {
         "title": "Rediger enhet: {device_name}",
-        "description": "Endre parametere for denne enheten, eller kryss av for 'Slett denne enheten' for å fjerne den.",
+        "description": "Endre parametere for denne enheten.",
         "data": {
           "name": "Visningsnavn",
           "priority": "Prioritet (1 = kuttes først, 10 = beholdes lengst)",
@@ -51,9 +51,16 @@
           "min_current": "Laveste tillatte ladestrøm (A)",
           "max_current": "Maksimal ladestrøm (A)",
           "phases": "Nett-tilkobling (1-fase eller 3-fase)",
-          "switch_entity": "Bryter-entitet (switch.*)",
-          "delete_device": "Slett denne enheten (Permanent fjerning)"
+          "switch_entity": "Bryter-entitet (switch.*)"
         }
+      },
+      "device_menu": {
+        "title": "Enhet: {device_name}",
+        "description": "Hva vil du gjøre med denne enheten?"
+      },
+      "delete_device": {
+        "title": "Slett enhet: {device_name}",
+        "description": "Trykk Send for å slette {device_name} permanent."
       },
       "add_water_heater": {
         "title": "Legg til Varmtvannsbereder",

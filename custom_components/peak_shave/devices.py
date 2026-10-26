@@ -374,7 +374,8 @@ class EVChargerDevice(BaseDevice):
     ) -> None:
         """Update EV charger readings from Home Assistant."""
         if current_amps is not None and current_amps > 0:
-            self.current_amps = current_amps
+            # Values above the configured max cannot be amps (e.g. a % charge limit)
+            self.current_amps = min(current_amps, self.max_current)
         self.is_charging = is_charging
         self.battery_soc = battery_soc
 

@@ -140,8 +140,7 @@ class TestConfigFlow(unittest.TestCase):
         flow = PeakShaveOptionsFlowHandler(mock_entry)
         flow._selected_device_id = "wb1"
 
-        # Submit with delete_device=True
-        result = asyncio.run(flow.async_step_edit_device({"delete_device": True}))
+        result = asyncio.run(flow.async_step_delete_device({}))
         self.assertEqual(result["type"], "create_entry")
 
         # Only ac1 remains

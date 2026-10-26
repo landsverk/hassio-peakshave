@@ -177,6 +177,14 @@ class PeakShaveCoordinator(DataUpdateCoordinator[EngineMetrics]):
                 # Read current entity
                 curr_state = self.hass.states.get(device.current_entity)
                 amps = _parse_float(curr_state.state) if curr_state else None
+                unit = curr_state.attributes.get("unit_of_measurement") if curr_state else None
+                if unit is not None and unit != "A":
+                    _LOGGER.error(
+                        "EV current entity %s reports unit '%s', not 'A' (wrong entity, e.g. charge limit?). Ignoring.",
+                        device.current_entity,
+                        unit,
+                    )
+                    amps = None
 
                 # Read switch entity if configured
                 is_charging = True
